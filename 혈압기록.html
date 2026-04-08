@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="혈압기록">
+<title>혈압 기록</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #f7f6f2;
+    --card: #ffffff;
+    --text: #1c1c1e;
+    --muted: #8e8e93;
+    --border: #e5e5ea;
+    --green: #34c759;
+    --yellow: #ff9f0a;
+    --red: #ff3b30;
+    --blue: #007aff;
+    --blue-light: #e8f2ff;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+  body {
+    font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+  .header {
+    background: var(--card);
+    padding: 56px 20px 20px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+  .section { padding: 20px 16px 0; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; padding-left: 4px; }
+
+  /* 상태 카드 */
+  .status-card {
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 0;
+    text-align: center;
+    transition: background 0.3s;
+  }
+  .status-card.normal { background: #eef6f0; }
+  .status-card.caution { background: #f5f0e8; }
+  .status-card.danger { background: #f2eeec; }
+  .status-card.empty { background: var(--card); border: 1px solid var(--border); }
+  .status-emoji { font-size: 36px; margin-bottom: 6px; }
+  .status-label { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .status-label.normal { color: #2d7a4a; }
+  .status-label.caution { color: #8a6200; }
+  .status-label.danger { color: #8a4a3a; }
+  .status-label.empty { color: var(--muted); }
+  .status-desc { font-size: 13px; color: var(--muted); }
+  .status-values { font-size: 32px; font-weight: 700; margin: 8px 0 4px; letter-spacing: -1px; }
+  .status-values.normal { color: #2d7a4a; }
+  .status-values.caution { color: #8a6200; }
+  .status-values.danger { color: #8a4a3a; }
+
+  /* 입력 카드 */
+  .input-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+  }
+  .bp-inputs { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+  .bp-field { flex: 1; }
+  .bp-field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .bp-field input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 12px;
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .bp-field input:focus { border-color: var(--blue); background: #fff; }
+  .bp-slash { font-size: 28px; font-weight: 300; color: var(--muted); margin-top: 18px; }
+  .bp-unit { font-size: 12px; color: var(--muted); text-align: center; margin-top: 4px; }
+
+  /* 약 체크 */
+  .med-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; margin-bottom: 16px; }
+  .med-label { font-size: 16px; font-weight: 500; }
+  .med-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .toggle {
+    width: 56px; height: 30px;
+    background: #e0e0e5;
+    border-radius: 99px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.25s;
+    border: none;
+    outline: none;
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 26px; height: 26px;
+    background: white;
+    border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.25s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle.on::after { transform: translateX(26px); }
+
+  /* 저장 버튼 */
+  .save-btn {
+    width: 100%;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .save-btn:active { opacity: 0.85; transform: scale(0.98); }
+  .save-btn:disabled { background: var(--border); color: var(--muted); }
+
+  /* 팁 카드 */
+  .tip-card {
+    background: var(--blue-light);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    border: 1px solid #cce0ff;
+  }
+  .tip-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tip-icon { font-size: 20px; }
+  .tip-title { font-size: 14px; font-weight: 600; color: #0056b3; }
+  .tip-text { font-size: 15px; color: #1a3a5c; line-height: 1.6; }
+  .tip-nav { display: flex; justify-content: flex-end; margin-top: 10px; gap: 8px; }
+  .tip-btn { background: white; border: 1px solid #cce0ff; border-radius: 8px; padding: 6px 12px; font-size: 13px; color: #0056b3; cursor: pointer; font-family: inherit; }
+  .tip-btn:active { background: #cce0ff; }
+
+  /* 기록 목록 */
+  .record-item {
+    background: var(--card);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid var(--border);
+  }
+  .record-left {}
+  .record-date { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .record-bp { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .record-right { text-align: right; }
+  .record-status { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 99px; }
+  .record-status.normal { background: #eef6f0; color: #2d7a4a; }
+  .record-status.caution { background: #f5f0e8; color: #8a6200; }
+  .record-status.danger { background: #f2eeec; color: #8a4a3a; }
+  .record-med { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .empty-records { text-align: center; color: var(--muted); font-size: 14px; padding: 30px 0; }
+
+  /* 토스트 */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #1c1c1e; color: white;
+    padding: 12px 20px; border-radius: 99px;
+    font-size: 14px; font-weight: 500;
+    opacity: 0; transition: all 0.3s;
+    pointer-events: none; white-space: nowrap;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .chart-wrap { background: var(--card); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); overflow: hidden; }
+  canvas { width: 100% !important; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>혈압 기록 💊</h1>
+  <p id="today-date"></p>
+</div>
+
+<div class="section">
+  <div class="section-title">오늘 상태</div>
+  <div class="status-card empty" id="status-card">
+    <div class="status-emoji">📋</div>
+    <div class="status-label empty">아직 오늘 기록이 없어요</div>
+    <div class="status-desc">아래에서 혈압을 입력해주세요</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">혈압 입력</div>
+  <div class="input-card">
+    <div class="bp-inputs">
+      <div class="bp-field">
+        <label>수축기 (위)</label>
+        <input type="number" id="sys" placeholder="120" min="60" max="250" inputmode="numeric">
+        <div class="bp-unit">mmHg</div>
+      </div>
+      <div class="bp-slash">/</div>
+      <div class="bp-field">
+        <label>이완기 (아래)</label>
+        <input type="number" id="dia" placeholder="80" min="40" max="130" inputmode="numeric">
+        <div class="bp-unit">mmHg</div>
+      </div>
+    </div>
+
+    <div class="med-row">
+      <div>
+        <div class="med-label">💊 약 먹었어요</div>
+        <div class="med-sub">오늘 혈압약 복용 여부</div>
+      </div>
+      <button class="toggle" id="med-toggle" onclick="toggleMed()"></button>
+    </div>
+
+    <div style="margin-bottom: 16px;">
+      <div style="font-size:14px; font-weight:500; margin-bottom:6px;">📝 메모 <span style="font-size:12px; color:var(--muted); font-weight:400;">(선택)</span></div>
+      <input type="text" id="memo-input" placeholder="예: 커피 마심, 잠 못 잤음, 짜게 먹음..." style="width:100%; border:1.5px solid var(--border); border-radius:var(--radius-sm); padding:11px 12px; font-size:15px; font-family:inherit; background:var(--bg); color:var(--text); outline:none;">
+    </div>
+    <button class="save-btn" onclick="saveRecord()">기록 저장하기</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">오늘의 건강 팁</div>
+  <div class="tip-card">
+    <div class="tip-header">
+      <span class="tip-icon">💡</span>
+      <span class="tip-title">혈압 관리 꿀팁</span>
+    </div>
+    <div class="tip-text" id="tip-text"></div>
+    <div class="tip-nav">
+      <button class="tip-btn" onclick="prevTip()">◀</button>
+      <button class="tip-btn" onclick="nextTip()">다음 팁 ▶</button>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">최근 기록</div>
+  <div id="chart-section" style="display:none; margin-bottom: 12px;">
+    <div class="chart-wrap">
+      <canvas id="bp-chart" height="120"></canvas>
+    </div>
+  </div>
+  <div id="records-list"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const TIPS = [
+  "🧂 나트륨을 줄이세요. 하루 소금 섭취량을 5g 이하로 줄이면 수축기 혈압이 2~8mmHg 낮아질 수 있어요.",
+  "🚶 매일 30분 걷기. 꾸준한 유산소 운동이 혈압을 4~9mmHg 낮춰줘요. 빠르게 걷는 것도 좋아요.",
+  "🍌 칼륨이 풍부한 음식을 드세요. 바나나, 감자, 시금치가 혈압 조절에 도움이 돼요.",
+  "🚬 금연은 필수예요. 담배 한 개비가 혈압을 일시적으로 크게 올려요.",
+  "🍷 음주는 적당히. 술은 혈압을 높이는 원인 중 하나예요.",
+  "😴 수면을 충분히 취하세요. 하루 7~8시간 수면이 혈압 조절에 중요해요.",
+  "🧘 스트레스를 관리하세요. 깊은 호흡이나 명상이 혈압을 낮추는 데 도움이 돼요.",
+  "⏰ 매일 같은 시간에 혈압을 재면 더 정확한 추이를 파악할 수 있어요. 아침 기상 후 30분 이내가 좋아요.",
+  "☕ 카페인을 줄이세요. 커피·녹차를 하루 2잔 이하로 줄여보세요.",
+  "🥦 DASH 식단을 참고하세요. 채소, 과일, 통곡물, 저지방 유제품 위주의 식단이 혈압에 좋아요.",
+  "💊 처방받은 혈압약은 절대 임의로 중단하지 마세요. 증상이 없어도 계속 드셔야 해요.",
+  "🌡️ 추운 날씨에는 혈압이 올라갈 수 있어요. 외출 시 따뜻하게 입으세요.",
+];
+
+let tipIdx = 0;
+let medOn = false;
+let records = [];
+let chart = null;
+
+function init() {
+  const d = new Date();
+  document.getElementById('today-date').textContent = `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${['일','월','화','수','목','금','토'][d.getDay()]}요일)`;
+  tipIdx = Math.floor(Math.random() * TIPS.length);
+  document.getElementById('tip-text').textContent = TIPS[tipIdx];
+  loadRecords();
+}
+
+function nextTip() { tipIdx = (tipIdx + 1) % TIPS.length; document.getElementById('tip-text').textContent = TIPS[tipIdx]; }
+function prevTip() { tipIdx = (tipIdx - 1 + TIPS.length) % TIPS.length; document.getElementById('tip-text').textContent = TIPS[tipIdx]; }
+
+function toggleMed() {
+  medOn = !medOn;
+  document.getElementById('med-toggle').classList.toggle('on', medOn);
+}
+
+function getStatus(sys, dia) {
+  if (sys < 120 && dia < 80) return { key: 'normal', label: '오늘은 좋아요', emoji: '🌿', desc: '정상 범위예요. 잘 관리되고 있어요.' };
+  if (sys < 130 && dia < 80) return { key: 'normal', label: '괜찮은 편이에요', emoji: '🙂', desc: '정상이지만 꾸준히 체크해요.' };
+  if (sys < 140 || dia < 90) return { key: 'caution', label: '오늘은 좀 높네요', emoji: '🌤️', desc: '조금 높아요. 물 한 잔 마시고 쉬어봐요.' };
+  if (sys < 160 || dia < 100) return { key: 'danger', label: '오늘 많이 높아요', emoji: '🍵', desc: '혈압이 꽤 높아요. 충분히 쉬어보세요.' };
+  return { key: 'danger', label: '오늘 매우 높아요', emoji: '🍵', desc: '혈압이 많이 높아요. 오늘 무리하지 말고 쉬어요.' };
+}
+
+async function saveRecord() {
+  const sys = parseInt(document.getElementById('sys').value);
+  const dia = parseInt(document.getElementById('dia').value);
+  if (!sys || !dia || sys < 60 || sys > 250 || dia < 40 || dia > 130) {
+    showToast('혈압 숫자를 올바르게 입력해주세요'); return;
+  }
+  const now = new Date();
+  const h = now.getHours();
+  const timeLabel = h < 12 ? '아침' : h < 18 ? '낮' : '저녁';
+  const memo = document.getElementById('memo-input').value.trim();
+  const record = {
+    sys, dia, med: medOn, memo,
+    time: now.toISOString(),
+    timeLabel,
+    dateStr: `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`
+  };
+  records.unshift(record);
+  if (records.length > 30) records = records.slice(0, 30);
+  await saveRecords();
+  updateStatus(sys, dia);
+  renderRecords();
+  document.getElementById('sys').value = '';
+  document.getElementById('dia').value = '';
+  document.getElementById('memo-input').value = '';
+  medOn = false;
+  document.getElementById('med-toggle').classList.remove('on');
+  showToast('기록됐어요 ✓');
+}
+
+function updateStatus(sys, dia) {
+  const s = getStatus(sys, dia);
+  const card = document.getElementById('status-card');
+  card.className = `status-card ${s.key}`;
+  card.innerHTML = `
+    <div class="status-emoji">${s.emoji}</div>
+    <div class="status-values ${s.key}">${sys} / ${dia}</div>
+    <div class="status-label ${s.key}">${s.label}</div>
+    <div class="status-desc">${s.desc}</div>
+  `;
+}
+
+function renderRecords() {
+  const el = document.getElementById('records-list');
+  if (records.length === 0) {
+    el.innerHTML = '<div class="empty-records">아직 기록이 없어요</div>';
+    document.getElementById('chart-section').style.display = 'none';
+    return;
+  }
+  el.innerHTML = records.slice(0, 10).map(r => {
+    const s = getStatus(r.sys, r.dia);
+    const timeTag = r.timeLabel ? `<span style="font-size:11px; background:var(--bg); border:1px solid var(--border); border-radius:99px; padding:1px 7px; color:var(--muted); margin-left:5px;">${r.timeLabel}</span>` : '';
+    const memoLine = r.memo ? `<div style="font-size:12px; color:var(--muted); margin-top:3px;">💬 ${r.memo}</div>` : '';
+    return `<div class="record-item" style="flex-direction:column; align-items:stretch;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div class="record-date">${r.dateStr}${timeTag}</div>
+          <div class="record-bp">${r.sys} / ${r.dia} <span style="font-size:13px;color:var(--muted);font-weight:400;">mmHg</span></div>
+        </div>
+        <div style="text-align:right;">
+          <div class="record-status ${s.key}">${s.label}</div>
+          <div class="record-med">${r.med ? '💊 약 복용' : '약 미복용'}</div>
+        </div>
+      </div>
+      ${memoLine}
+    </div>`;
+  }).join('');
+
+  if (records.length >= 3) {
+    document.getElementById('chart-section').style.display = 'block';
+    renderChart();
+  }
+}
+
+function renderChart() {
+  const recent = records.slice(0, 7).reverse();
+  const labels = recent.map(r => r.timeLabel ? `${r.dateStr.split(' ')[0]} ${r.timeLabel}` : r.dateStr.split(' ')[0]);
+  const sysData = recent.map(r => r.sys);
+  const diaData = recent.map(r => r.dia);
+  function getBarColor(sys, dia) {
+    if (sys >= 160 || dia >= 100) return 'rgba(180,100,80,0.72)';
+    if (sys >= 140 || dia >= 90)  return 'rgba(180,100,80,0.72)';
+    if (sys >= 130 || dia >= 80)  return 'rgba(190,155,80,0.72)';
+    return 'rgba(80,160,110,0.72)';
+  }
+  const ctx = document.getElementById('bp-chart').getContext('2d');
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '혈압',
+        data: sysData.map((s, i) => [diaData[i], s]),
+        backgroundColor: sysData.map((s, i) => getBarColor(s, diaData[i])),
+        borderRadius: 5,
+        borderSkipped: false,
+        barPercentage: 0.55
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const [dia, sys] = ctx.raw;
+              const r = recent[ctx.dataIndex];
+              const memo = r && r.memo ? `  💬 ${r.memo}` : '';
+              return ` ${sys} / ${dia} mmHg${memo}`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: { min: 55, max: 220, ticks: { font: { size: 11 }, stepSize: 20 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzhdmkH_1tHjSn5cO74HqcQzHa4nb_BvnjXay7GyrkcV5YLCw3LSLOD449KBJKkPKa9/exec';
+
+async function saveRecords() {
+  try { localStorage.setItem('bp_records', JSON.stringify(records)); } catch(e) {}
+  if (records.length === 0) return;
+  const r = records[0];
+  const s = getStatus(r.sys, r.dia);
+  try {
+    await fetch(SHEET_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...r, status: s.label })
+    });
+  } catch(e) {}
+}
+
+async function loadRecords() {
+  try {
+    const local = localStorage.getItem('bp_records');
+    if (local) { records = JSON.parse(local); renderRecords(); if (records.length > 0) updateStatus(records[0].sys, records[0].dia); }
+    else { renderRecords(); }
+  } catch(e) { renderRecords(); }
+  try {
+    const res = await fetch(SHEET_URL + '?t=' + Date.now());
+    const data = await res.json();
+    if (data.records && data.records.length > 0) {
+      records = data.records;
+      localStorage.setItem('bp_records', JSON.stringify(records));
+      renderRecords();
+      updateStatus(records[0].sys, records[0].dia);
+    }
+  } catch(e) {}
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+init();
+</script>
+</body>
+</html>

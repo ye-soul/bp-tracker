@@ -194,7 +194,7 @@
 <body>
 
 <div class="header">
-  <h1>미현씨의 혈압 기록 💊</h1>
+  <h1>혈압 기록 💊</h1>
   <p id="today-date"></p>
 </div>
 
@@ -435,7 +435,7 @@ function renderChart() {
   });
 }
 
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzvp3sMcaeGHWu2wuvnrggiiswZU1SEnKskj9D--32nkPEbUVM1ATtau7OyfRfcBex8/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzcWbFDI4udXTMcZW0TJJHqLTMPTnG1-wwKnMN1mCf7f0LWI9fUpDKl4QL6dMyDybq5/exec';
 
 async function saveRecords() {
   try { localStorage.setItem('bp_records', JSON.stringify(records)); } catch(e) {}
@@ -458,16 +458,6 @@ async function loadRecords() {
     if (local) { records = JSON.parse(local); renderRecords(); if (records.length > 0) updateStatus(records[0].sys, records[0].dia); }
     else { renderRecords(); }
   } catch(e) { renderRecords(); }
-  try {
-    const res = await fetch(SHEET_URL + '?t=' + Date.now());
-    const data = await res.json();
-    if (data.records && data.records.length > 0) {
-      records = data.records;
-      localStorage.setItem('bp_records', JSON.stringify(records));
-      renderRecords();
-      updateStatus(records[0].sys, records[0].dia);
-    }
-  } catch(e) {}
 }
 
 function showToast(msg) {

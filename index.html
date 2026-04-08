@@ -194,7 +194,7 @@
 <body>
 
 <div class="header">
-  <h1>혈압 기록 💊</h1>
+  <h1>미현씨의 혈압 기록 💊</h1>
   <p id="today-date"></p>
 </div>
 
@@ -435,7 +435,14 @@ function renderChart() {
   });
 }
 
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbzcWbFDI4udXTMcZW0TJJHqLTMPTnG1-wwKnMN1mCf7f0LWI9fUpDKl4QL6dMyDybq5/exec';
+const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNz4uOmbQRZWB_rcE5oaHF03q8rHcUOmH5kd-CujAiHD3Oow/formResponse';
+const FORM_FIELDS = {
+  sys: 'entry.1893058748',
+  dia: 'entry.1259588264',
+  med: 'entry.1680639002',
+  memo: 'entry.1928270229',
+  timeLabel: 'entry.113309519'
+};
 
 async function saveRecords() {
   try { localStorage.setItem('bp_records', JSON.stringify(records)); } catch(e) {}
@@ -443,11 +450,16 @@ async function saveRecords() {
   const r = records[0];
   const s = getStatus(r.sys, r.dia);
   try {
-    await fetch(SHEET_URL, {
+    const body = new URLSearchParams();
+    body.append(FORM_FIELDS.sys, r.sys);
+    body.append(FORM_FIELDS.dia, r.dia);
+    body.append(FORM_FIELDS.med, r.med ? '복용' : '미복용');
+    body.append(FORM_FIELDS.memo, r.memo || '');
+    body.append(FORM_FIELDS.timeLabel, (r.timeLabel || '') + ' ' + r.dateStr + ' ' + s.label);
+    await fetch(FORM_URL, {
       method: 'POST',
       mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...r, status: s.label })
+      body: body
     });
   } catch(e) {}
 }
